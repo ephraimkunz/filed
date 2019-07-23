@@ -8,7 +8,8 @@ It seems like a fun project with a slightly larger C program. I was impressed by
 clear, simple code of the original project and want to use it to learn to be a better
 systems programmer. This will give me an opportunity to apply some software analysis
 knowledge I'm learning in my master's program. Later I may use this as an extended 
-"Hello World" example and do such things as implement it in Rust.
+"Hello World" example and do such things as implement it in Rust and compare performance
+characteristics / ease of coding / correctness.
 
 
 filed Original README
