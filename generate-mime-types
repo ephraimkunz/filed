@@ -1,0 +1,109 @@
+#! /usr/bin/env tclsh
+
+if {[llength $argv] != 1} {
+	puts stderr "Usage: generate-mime-type <file>"
+
+	exit 1
+}
+
+set mimeinfofile [lindex $argv 0]
+
+set modulus 16777259
+
+# Must match what is in filed.c
+proc filed_hash {str mod} {
+	set retval [expr {$mod - 1}]
+	set prev [expr {$mod % 255}]
+	for {set idx 0} {$idx < [string length $str]} {incr idx} {
+		set curr [string index $str $idx]
+		binary scan $curr H* curr
+		set curr [format %u 0x$curr]
+
+		if {$curr < 32} {
+			set curr [expr {255 - $curr}]
+		} else {
+			set curr [expr {$curr - 32}]
+		}
+
+		if {$prev < $curr} {
+			set diff [expr {$curr - $prev}]
+		} else {
+			set diff [expr {$prev - $curr}]
+		}
+
+		set prev $curr
+
+		set retval [expr {($retval << 3) & 0xffffffff}]
+		set retval [expr {$retval ^ $diff}]
+	}
+
+	set retval [expr {$retval % $mod}]
+
+	return $retval
+
+}
+
+# Read contents of mime types file
+catch {
+	set fd [open $mimeinfofile]
+	set mimeinfo [read $fd]
+	close $fd
+}
+
+if {![info exists mimeinfo]} {
+	puts stderr "Not using $mimeinfofile, unreadable."
+
+	exit 1
+}
+
+puts stderr "Using $mimeinfofile as mime.types"
+
+# Parse into type and extensions pairs
+foreach line [split $mimeinfo "\n"] {
+	regsub {#.*} $line {} line
+	set line [string trim $line]
+
+	if {$line == ""} {
+		continue
+	}
+
+	set line [split $line]
+
+	set mime [lindex $line 0]
+	set extensions [lrange $line 1 end]
+
+	foreach extension $extensions {
+		if {$extension == ""} {
+			continue
+		}
+
+		set extensioninfo($extension) $mime
+	}
+}
+
+# For every extension, generate a hash
+# For every hash, note the extension
+foreach extension [array names extensioninfo] {
+	set hash_id [filed_hash $extension $modulus]
+
+	lappend hashinfo($hash_id) $extension
+
+}
+
+# Emit a C fragment to take a pointer (p) to an extension determine the mime type
+if {[llength [array names hashinfo]] > 0} {
+	puts "\tswitch (filed_hash((const unsigned char *) p, $modulus)) \{"
+	foreach hash [lsort -integer -increasing [array names hashinfo]] {
+		puts "\t\tcase $hash:"
+		foreach extension $hashinfo($hash) {
+			puts "\t\t\tif (strcmp(p, \"$extension\") == 0) \{"
+			puts "\t\t\t\treturn(\"$extensioninfo($extension)\");"
+			puts "\t\t\t\}"
+		}
+		puts "\t\t\treturn(FILED_DEFAULT_TYPE);"
+	}
+	puts "\t\}"
+}
+
+# Declare victory
+exit 0
