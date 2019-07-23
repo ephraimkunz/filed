@@ -23,7 +23,13 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+#ifdef __APPLE__
+#include <sys/uio.h>
+#else
 #include <sys/sendfile.h>
+#endif
+
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
@@ -715,6 +721,7 @@ static void filed_sockettimeout_close(int sockfd) {
 }
 
 static void *filed_sockettimeout_thread(void *arg) {
+	(void)arg; // Unused
 	struct timespec sleep_time;
 	time_t now, expiration_time;
 	pthread_t thread_id;
@@ -924,6 +931,10 @@ static void filed_path_translate_set_root(const char *var, struct filed_options 
 
 /* Open a file and return file information */
 static struct filed_fileinfo *filed_open_file(const char *path, struct filed_fileinfo *buffer, struct filed_options *options) {
+	#ifndef FILED_FAKE_CHROOT
+	(void)options; // Unused
+	#endif
+
 	struct filed_fileinfo *cache;
 	unsigned int cache_idx;
 	off_t len;
@@ -949,7 +960,7 @@ static struct filed_fileinfo *filed_open_file(const char *path, struct filed_fil
 	if (strcmp(path, cache->path) != 0) {
 		filed_log_msg_debug("Cache miss for idx: %lu: OLD \"%s\", NEW \"%s\"", (unsigned long) cache_idx, cache->path, path);
 
-		fd = open(filed_path_translate(path, options), O_RDONLY | O_LARGEFILE);
+		fd = open(filed_path_translate(path, options), O_RDONLY);
 		if (fd < 0) {
 			if (filed_fileinfo_fdcache_size != 0) {
 				pthread_mutex_unlock(&cache->mutex);
@@ -1000,9 +1011,6 @@ static struct filed_fileinfo *filed_open_file(const char *path, struct filed_fil
 	}
 
 	return(buffer);
-
-	/* options is only used if fake chroot is enabled, confuse the compiler */
-	options = options;
 }
 
 /* Process an HTTP request and return the path requested */
@@ -1208,6 +1216,7 @@ static void filed_error_page(FILE *fp, const char *date_current, int error_numbe
 /* Return a redirect to index.html */
 #ifndef FILED_DONT_REDIRECT_DIRECTORIES
 static void filed_redirect_index(FILE *fp, const char *date_current, const char *path, struct filed_log_entry *log) {
+	(void)path; // Unused
 	int http_code = 302;
 	fprintf(fp, "HTTP/1.1 %i OK\r\nDate: %s\r\nServer: filed\r\nLast-Modified: %s\r\nContent-Length: 0\r\nConnection: close\r\nLocation: %s\r\n\r\n",
 		http_code,
@@ -1228,9 +1237,6 @@ static void filed_redirect_index(FILE *fp, const char *date_current, const char 
 	fclose(fp);
 
 	return;
-
-	/* Currently unused: path */
-	path = path;
 }
 #endif
 
@@ -1244,6 +1250,23 @@ static const char *filed_connection_str(int connection_value) {
 	}
 
 	return("close");
+}
+
+/* Provide a version of sendfile that works the same on both BSD and Linux platforms.
+   This will have the Linux function signature and semantics.
+ */
+static ssize_t filed_sendfile(int out_fd, int in_fd, off_t *offset, size_t count) {
+	#ifdef __APPLE__
+	off_t len = count;
+	int ret = sendfile(in_fd, out_fd, *offset, &len, NULL, 0);
+	if (ret >= 0) {
+		ret = len;
+		(*offset) += len;
+	}
+	return ret;
+	#else
+	return sendfile(out_fd, in_fd, offset, count);
+	#endif
 }
 
 /* Handle a single request from a client */
@@ -1407,7 +1430,7 @@ static int filed_handle_client(int fd, struct filed_http_request *request, struc
 			sendfile_size = sendfile_len;
 		}
 
-		sendfile_ret = sendfile(fd, fileinfo->fd, &sendfile_offset, sendfile_size);
+		sendfile_ret = filed_sendfile(fd, fileinfo->fd, &sendfile_offset, sendfile_size);
 		if (sendfile_ret <= 0) {
 #ifdef FILED_NONBLOCK_HTTP
 			if (errno == EAGAIN) {
