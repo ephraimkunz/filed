@@ -647,7 +647,7 @@ _Atomic time_t filed_sockettimeout_time;
 struct {
 	_Atomic time_t expiration_time;
 	_Atomic pthread_t thread_id;
-	bool valid;
+	_Atomic bool valid;
 }* filed_sockettimeout_sockstatus;
 long filed_sockettimeout_sockstatus_length;
 int filed_sockettimeout_devnull_fd;
