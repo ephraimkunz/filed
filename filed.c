@@ -353,9 +353,6 @@ static int filed_init(unsigned int cache_size) {
 	srandom(random_value);
 
 	return(0);
-
-	/* NOTREACH: Read may fail or succeed, we don't actually care */
-	read_ret = read_ret;
 }
 
 /* Listen on a particular address/port */
@@ -760,9 +757,6 @@ static void *filed_sockettimeout_thread(void *arg) {
 	}
 
 	return(NULL);
-
-	/* NOTREACH: We don't actually take any arguments */
-	arg = arg;
 }
 
 static int filed_sockettimeout_thread_init(void) {
