@@ -1,4 +1,17 @@
-filed
+What I'm doing:
+Porting this project to macOS. Once the basics are done, I'll do some profiling to 
+choose compile-time constants and fix hotspots. I'll also write some unit tests and
+modernize the code a bit.
+
+Why I'm doing this:
+It seems like a fun project with a slightly larger C program. I was impressed by the 
+clear, simple code of the original project and want to use it to learn to be a better
+systems programmer. This will give me an opportunity to apply some software analysis
+knowledge I'm learning in my master's program. Later I may use this as an extended 
+"Hello World" example and do such things as implement it in Rust.
+
+
+filed Original README
 =====
 
 Introduction
