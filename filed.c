@@ -1779,7 +1779,7 @@ static int filed_daemonize(void) {
 }
 
 /* Run process */
-int main(int argc, char **argv) {
+int filed_main(int argc, char *argv[]) {
 	struct option options[12];
 	struct filed_options thread_options = {0};
 	const char *bind_addr = BIND_ADDR, *newroot = NULL, *log_file = LOG_FILE;
