@@ -233,8 +233,8 @@ unsigned int filed_fileinfo_fdcache_size = 0;
 
 /** Logging **/
 struct filed_log_entry *filed_log_msg_list;
-pthread_mutex_t filed_log_msg_list_mutex;
-pthread_cond_t filed_log_msg_list_ready;
+static pthread_mutex_t filed_log_msg_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t filed_log_msg_list_ready = PTHREAD_COND_INITIALIZER;
 
 /* Signal Handler */
 static void filed_signal_handler(int signal_number) {
@@ -624,8 +624,6 @@ static int filed_logging_thread_init(FILE *logfp) {
 	args->fp = logfp;
 
 	filed_log_msg_list = NULL;
-
-	pthread_mutex_init(&filed_log_msg_list_mutex, NULL);
 
 	pthread_create(&thread_id, NULL, filed_logging_thread, args);
 

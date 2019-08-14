@@ -13,7 +13,7 @@ vpath %.c $(srcdir)
 
 all: release
 
-release: CFLAGS += -O3 -DNDEGUG
+release: CFLAGS += -O3 -DNDEBUG
 release: filed.o filed_main.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o "$@" $^ $(LIBS)
 
