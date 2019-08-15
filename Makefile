@@ -1,8 +1,10 @@
-CC = gcc
+CC = clang
 CFLAGS = -I. -std=gnu11 -Wall -Werror -Wextra -W -pthread -D_FILE_OFFSET_BITS=64 $(FILED_EXTRA_CFLAGS)
 LDFLAGS = -pthread $(FILED_EXTRA_LDFLAGS)
 LIBS = -lpthread $(FILED_EXTRA_LIBS)
 MIMETYPES = /etc/httpd/mime.types
+ASAN_FLAGS = -fsanitize=address -fno-omit-frame-pointer -Wno-format-security
+TSAN_FLAGS = -fsanitize=thread
 
 PREFIX = /usr/local
 prefix = $(PREFIX)
@@ -25,6 +27,14 @@ test: CFLAGS += -DDEBUG -g3
 test: filed_test.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o "$@" $^ $(LIBS)
 
+asan: CFLAGS += -DDEBUG -g3
+asan: filed.o filed_main.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $(ASAN_FLAGS) -o "$@" $^ $(LIBS)
+
+tsan: CFLAGS += -DDEBUG -g3
+tsan: filed.o filed_main.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $(TSAN_FLAGS) -o "$@" $^ $(LIBS)
+
 filed.o: $(srcdir)/filed.c filed-mime-types.h 
 
 filed_main.o: $(srcdir)/filed_main.c filed.h
@@ -45,7 +55,7 @@ install: filed $(srcdir)/filed.1
 clean:
 	rm -f filed.o filed_main.o filed_test.o
 	rm -f filed-mime-types.h.new
-	rm -f debug release test
+	rm -f debug release test asan tsan
 
 distclean: clean
 	rm -f filed-mime-types.h

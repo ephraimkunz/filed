@@ -1,0 +1,6 @@
+#!/bin/bash
+
+TOTAL_REQUESTS=1000
+MAX_CONCURRENT=50
+
+seq 1 $TOTAL_REQUESTS | xargs -n1 -P$MAX_CONCURRENT  curl -o /dev/null  "http://localhost/bible.txt"
